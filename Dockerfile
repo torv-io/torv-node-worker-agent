@@ -1,10 +1,7 @@
-FROM alpine:latest
+FROM node:20-alpine
 
-# deps for nvm, node, npm, jq
-RUN apk add --no-cache bash curl git python3 make g++ jq nodejs npm
-
-ENV NVM_DIR=/root/.nvm
-RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+# jq for bootstrap JSON parsing
+RUN apk add --no-cache jq
 
 WORKDIR /app
 
