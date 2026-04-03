@@ -14,4 +14,4 @@ RUN mkdir -p node_modules/@torv/shared node_modules/@pipe/node-sdk
 COPY index.js bootstrap.sh ./
 RUN chmod +x bootstrap.sh
 
-CMD ["./bootstrap.sh"]
+CMD ["/bin/sh", "/app/bootstrap.sh"]

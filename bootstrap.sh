@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Bootstrap: either fetch code/config from S3 via presigned URLs (env) or read JSON from stdin.
 # Presigned URL mode (spawned by torv-worker-agent):
 #   CODE_PRESIGNED_URL, CONFIG_PRESIGNED_URL, CONTEXT_JSON
