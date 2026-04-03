@@ -1,7 +1,7 @@
 FROM node:20-alpine
 
-# jq for bootstrap JSON parsing
-RUN apk add --no-cache jq
+# jq + wget for bootstrap (stdin JSON or presigned URL fetch)
+RUN apk add --no-cache jq wget
 
 WORKDIR /app
 

@@ -1,6 +1,6 @@
 /**
  * Node worker agent: loads and runs bundled stage code with the given context.
- * Expects WORK_DIR and CONTEXT env vars (set by bootstrap.sh).
+ * Expects WORK_DIR and CONTEXT env vars (bootstrap sets CONTEXT from stdin JSON or CONTEXT_JSON after S3 fetch).
  *
  * Output protocol (JSON lines to stdout):
  * - Log lines: {"type":"log","level":"info","message":"..."}
