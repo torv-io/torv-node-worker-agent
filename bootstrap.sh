@@ -28,6 +28,8 @@ if [ -n "$CODE_PRESIGNED_URL" ]; then
   mkdir -p "$WORK_DIR/node_modules/@pipe" "$WORK_DIR/node_modules/@torv"
   ln -sf /app/node_modules/@torv/shared "$WORK_DIR/node_modules/@torv/shared" 2>/dev/null || true
   ln -sf /app/node_modules/@pipe/node-sdk "$WORK_DIR/node_modules/@pipe/node-sdk" 2>/dev/null || true
+  # Preinstall deps in image (package.json); LLM often uses these without listing them in .stage.json
+  ln -sf /app/node_modules/node-fetch "$WORK_DIR/node_modules/node-fetch" 2>/dev/null || true
 
   echo "$CODE" > "$WORK_DIR/stage.js"
   export WORK_DIR
@@ -59,6 +61,7 @@ fi
 mkdir -p "$WORK_DIR/node_modules/@pipe" "$WORK_DIR/node_modules/@torv"
 ln -sf /app/node_modules/@torv/shared "$WORK_DIR/node_modules/@torv/shared" 2>/dev/null || true
 ln -sf /app/node_modules/@pipe/node-sdk "$WORK_DIR/node_modules/@pipe/node-sdk" 2>/dev/null || true
+ln -sf /app/node_modules/node-fetch "$WORK_DIR/node_modules/node-fetch" 2>/dev/null || true
 
 echo "$CODE" > "$WORK_DIR/stage.js"
 export WORK_DIR CONTEXT
