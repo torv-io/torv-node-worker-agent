@@ -18,16 +18,17 @@ if [ -n "$CODE_PRESIGNED_URL" ]; then
   DEPENDENCIES=$(echo "$STAGE_CONFIG" | jq -r '.dependencies // {}')
 
   if [ "$DEPENDENCIES" != "{}" ] && [ "$DEPENDENCIES" != "null" ]; then
-    RUNTIME_DEPS=$(echo "$DEPENDENCIES" | jq 'with_entries(select(.key | startswith("@pipe/") | not))')
+    RUNTIME_DEPS=$(echo "$DEPENDENCIES" | jq 'with_entries(select(.key | (startswith("@pipe/") or . == "@torv-io/node-sdk" or . == "@torv-io/shared") | not))')
     if [ "$RUNTIME_DEPS" != "{}" ] && [ "$RUNTIME_DEPS" != "null" ]; then
       echo "$RUNTIME_DEPS" | jq '{name: "stage-dependencies", version: "1.0.0", dependencies: .}' > "$WORK_DIR/package.json"
-      npm install --production --no-audit --no-fund --prefix "$WORK_DIR"
+      # NODE_ENV=production (often from Node images) maps to legacy npm "production" config → noisy warning; omit=dev is what we want.
+      NODE_ENV=development npm install --omit=dev --no-audit --no-fund --prefix "$WORK_DIR"
     fi
   fi
 
-  mkdir -p "$WORK_DIR/node_modules/@pipe" "$WORK_DIR/node_modules/@torv"
-  ln -sf /app/node_modules/@torv/shared "$WORK_DIR/node_modules/@torv/shared" 2>/dev/null || true
-  ln -sf /app/node_modules/@pipe/node-sdk "$WORK_DIR/node_modules/@pipe/node-sdk" 2>/dev/null || true
+  mkdir -p "$WORK_DIR/node_modules/@torv-io"
+  ln -sf /app/node_modules/@torv-io/shared "$WORK_DIR/node_modules/@torv-io/shared" 2>/dev/null || true
+  ln -sf /app/node_modules/@torv-io/node-sdk "$WORK_DIR/node_modules/@torv-io/node-sdk" 2>/dev/null || true
   # Preinstall deps in image (package.json); LLM often uses these without listing them in .stage.json
   ln -sf /app/node_modules/node-fetch "$WORK_DIR/node_modules/node-fetch" 2>/dev/null || true
 
@@ -51,16 +52,16 @@ trap "rm -rf $WORK_DIR" EXIT
 echo '{"name":"stage-run","version":"1.0.0"}' > "$WORK_DIR/package.json"
 
 if [ "$DEPENDENCIES" != "{}" ] && [ "$DEPENDENCIES" != "null" ]; then
-  RUNTIME_DEPS=$(echo "$DEPENDENCIES" | jq 'with_entries(select(.key | startswith("@pipe/") | not))')
+  RUNTIME_DEPS=$(echo "$DEPENDENCIES" | jq 'with_entries(select(.key | (startswith("@pipe/") or . == "@torv-io/node-sdk" or . == "@torv-io/shared") | not))')
   if [ "$RUNTIME_DEPS" != "{}" ] && [ "$RUNTIME_DEPS" != "null" ]; then
     echo "$RUNTIME_DEPS" | jq '{name: "stage-dependencies", version: "1.0.0", dependencies: .}' > "$WORK_DIR/package.json"
-    npm install --production --no-audit --no-fund --prefix "$WORK_DIR"
+    NODE_ENV=development npm install --omit=dev --no-audit --no-fund --prefix "$WORK_DIR"
   fi
 fi
 
-mkdir -p "$WORK_DIR/node_modules/@pipe" "$WORK_DIR/node_modules/@torv"
-ln -sf /app/node_modules/@torv/shared "$WORK_DIR/node_modules/@torv/shared" 2>/dev/null || true
-ln -sf /app/node_modules/@pipe/node-sdk "$WORK_DIR/node_modules/@pipe/node-sdk" 2>/dev/null || true
+mkdir -p "$WORK_DIR/node_modules/@torv-io"
+ln -sf /app/node_modules/@torv-io/shared "$WORK_DIR/node_modules/@torv-io/shared" 2>/dev/null || true
+ln -sf /app/node_modules/@torv-io/node-sdk "$WORK_DIR/node_modules/@torv-io/node-sdk" 2>/dev/null || true
 ln -sf /app/node_modules/node-fetch "$WORK_DIR/node_modules/node-fetch" 2>/dev/null || true
 
 echo "$CODE" > "$WORK_DIR/stage.js"

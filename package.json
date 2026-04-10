@@ -8,6 +8,8 @@
     "start": "node index.js"
   },
   "dependencies": {
+    "@torv-io/node-sdk": "^1.0.0",
+    "@torv-io/shared": "^1.0.0",
     "node-fetch": "^2.7.0"
   }
 }
