@@ -21,13 +21,45 @@ if (!workDir || !contextJson) {
 }
 
 // Writes a structured log line to stdout for pipe-worker-agent to forward via gRPC.
+//
+// We deliberately keep `args` BUT cap their serialized size. A stage that does
+// `logger.error('...', { jsonData: hugeApiResponse })` would otherwise produce
+// a multi-MB stdout line. Two things go wrong with that:
+//   1. The worker's bufio scanner has a (large but finite) buffer; an
+//      especially huge line trips `bufio.Scanner: token too long` and the
+//      worker stops reading further events, including the final `result`.
+//   2. Even within the buffer, Node's stdout pipe is asynchronous; if we
+//      write a huge line and immediately exit, the kernel/pipe may drop
+//      queued bytes before the worker reads them.
+// Both manifest as "stage finished successfully but no outputs were captured".
+const MAX_LOG_ARGS_BYTES = 32 * 1024;
 function writeLog(level, message, args = []) {
-  const line = JSON.stringify({
-    type: 'log',
-    level,
-    message,
-    args: args.length > 0 ? args : undefined,
-  }) + '\n';
+  let safeArgs;
+  if (args.length > 0) {
+    try {
+      const serialized = JSON.stringify(args);
+      if (serialized.length > MAX_LOG_ARGS_BYTES) {
+        safeArgs = [
+          {
+            _truncated: true,
+            originalBytes: serialized.length,
+            preview: serialized.slice(0, MAX_LOG_ARGS_BYTES),
+          },
+        ];
+      } else {
+        safeArgs = args;
+      }
+    } catch (_) {
+      safeArgs = [{ _unserializable: true }];
+    }
+  }
+  const line =
+    JSON.stringify({
+      type: 'log',
+      level,
+      message,
+      args: safeArgs,
+    }) + '\n';
   process.stdout.write(line);
 }
 
@@ -61,27 +93,44 @@ function createStageLogger() {
       throw new Error('Stage runner must return a StageResult object');
     }
 
-    // Final result line (pipe-worker-agent stops reading after this)
-    process.stdout.write(
-      JSON.stringify({
-        type: 'result',
-        success: result.success !== false,
-        outputs: result.outputs || {},
-        error: result.error || null,
-        metadata: result.metadata || {},
-      }) + '\n',
-    );
+    await emitResult({
+      type: 'result',
+      success: result.success !== false,
+      outputs: result.outputs || {},
+      error: result.error || null,
+      metadata: result.metadata || {},
+    });
     process.exit(0);
   } catch (error) {
-    process.stdout.write(
-      JSON.stringify({
-        type: 'result',
-        success: false,
-        outputs: {},
-        error: error.message || String(error),
-        metadata: { stack: error.stack },
-      }) + '\n',
-    );
+    await emitResult({
+      type: 'result',
+      success: false,
+      outputs: {},
+      error: error.message || String(error),
+      metadata: { stack: error.stack },
+    });
     process.exit(1);
   }
 })();
+
+/**
+ * Write the final `result` event and wait for stdout to fully drain before
+ * resolving. Calling `process.exit` while bytes are still queued in the
+ * stdout pipe can drop them silently — for the `result` event that means the
+ * orchestrator records a successful run with NO outputs, and the user sees an
+ * empty Outputs tab.
+ */
+function emitResult(payload) {
+  return new Promise((resolve) => {
+    const line = JSON.stringify(payload) + '\n';
+    const flushed = process.stdout.write(line);
+    const done = () => {
+      // Best-effort second pass: wait for any prior buffered writes too.
+      if (typeof process.stdout.uncork === 'function') process.stdout.uncork();
+      // A microtask delay gives the kernel a moment to drain the pipe.
+      setImmediate(resolve);
+    };
+    if (flushed) done();
+    else process.stdout.once('drain', done);
+  });
+}
