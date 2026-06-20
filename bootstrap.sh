@@ -34,6 +34,16 @@ if [ -n "$CODE_PRESIGNED_URL" ]; then
 
   echo "$CODE" > "$WORK_DIR/stage.js"
   export WORK_DIR
+
+  # Prefer orchestrator HTTP context over gRPC-delivered CONTEXT_JSON (older worker agents may omit it).
+  if [ -n "$ORCHESTRATOR_HTTP_URL" ] && [ -n "$STAGE_RUN_ID" ] && [ -n "$WORKER_SECRET" ]; then
+    FETCHED=$(wget -q -O- --header="Authorization: Bearer $WORKER_SECRET" \
+      "${ORCHESTRATOR_HTTP_URL%/}/api/worker/stage-runs/${STAGE_RUN_ID}/context" 2>/dev/null || true)
+    if [ -n "$FETCHED" ]; then
+      CONTEXT_JSON="$FETCHED"
+    fi
+  fi
+
   export CONTEXT="$CONTEXT_JSON"
   cd /app && exec node index.js
 fi

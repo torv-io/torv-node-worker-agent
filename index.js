@@ -2,10 +2,10 @@ import { createRequire } from 'module';
 import { join } from 'path';
 
 const workDir = process.env.WORK_DIR;
-const contextJson = process.env.CONTEXT;
+const contextJson = process.env.CONTEXT || process.env.CONTEXT_JSON;
 
 if (!workDir || !contextJson) {
-  process.stderr.write('Error: WORK_DIR and CONTEXT environment variables must be set\n');
+  process.stderr.write('Error: WORK_DIR and CONTEXT (or CONTEXT_JSON) environment variables must be set\n');
   process.exit(1);
 }
 
