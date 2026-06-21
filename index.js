@@ -59,13 +59,22 @@ function readJsonObjectFile(path, label) {
 }
 
 function loadRuntime() {
-  const paramsFile = process.env.PARAMS_FILE;
-  const inputsFile = process.env.INPUTS_FILE;
-  if (!paramsFile || !inputsFile) {
-    throw new Error('PARAMS_FILE and INPUTS_FILE must be set');
+  const paramsRaw = process.env.TORV_PARAMS_JSON;
+  if (!paramsRaw) {
+    throw new Error('TORV_PARAMS_JSON must be set (params are delivered via gRPC on the run command)');
   }
+  const params = JSON.parse(paramsRaw);
+  if (typeof params !== 'object' || params === null || Array.isArray(params)) {
+    throw new Error('TORV_PARAMS_JSON must be a JSON object');
+  }
+
+  const inputsFile = process.env.INPUTS_FILE;
+  if (!inputsFile) {
+    throw new Error('INPUTS_FILE must be set');
+  }
+
   return {
-    params: readJsonObjectFile(paramsFile, 'PARAMS_FILE'),
+    params,
     inputs: readJsonObjectFile(inputsFile, 'INPUTS_FILE'),
   };
 }

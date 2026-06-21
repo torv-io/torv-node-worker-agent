@@ -1,6 +1,6 @@
 #!/bin/sh
-# Bootstrap: fetch stage code/config from presigned URLs, then run via index.js.
-# Worker agent bind-mounts PARAMS_FILE and INPUTS_FILE (written on host disk from gRPC params + S3 inputs).
+# Bootstrap: fetch stage code/config from presigned URLs, then run index.js.
+# Params arrive via TORV_PARAMS_JSON (from gRPC). Inputs via bind-mounted INPUTS_FILE.
 set -e
 
 if [ -n "$CODE_PRESIGNED_URL" ]; then
