@@ -1,11 +1,11 @@
 import { createRequire } from 'module';
+import { readFileSync } from 'fs';
 import { join } from 'path';
 
 const workDir = process.env.WORK_DIR;
-const contextJson = process.env.CONTEXT || process.env.CONTEXT_JSON;
 
-if (!workDir || !contextJson) {
-  process.stderr.write('Error: WORK_DIR and CONTEXT (or CONTEXT_JSON) environment variables must be set\n');
+if (!workDir) {
+  process.stderr.write('Error: WORK_DIR environment variable must be set\n');
   process.exit(1);
 }
 
@@ -49,10 +49,59 @@ function createStageLogger() {
   };
 }
 
+function isValidRuntime(value) {
+  return (
+    value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    typeof value.params === 'object' &&
+    value.params !== null &&
+    !Array.isArray(value.params)
+  );
+}
+
+function parseRuntimeJson(raw) {
+  const parsed = JSON.parse(raw);
+  if (!isValidRuntime(parsed)) {
+    throw new Error('Stage context is missing a params object');
+  }
+  return parsed;
+}
+
+function loadRuntime() {
+  const paramsFile = process.env.PARAMS_FILE;
+  const inputsFile = process.env.INPUTS_FILE;
+  if (paramsFile && inputsFile) {
+    const params = JSON.parse(readFileSync(paramsFile, 'utf8'));
+    const inputs = JSON.parse(readFileSync(inputsFile, 'utf8'));
+    return {
+      params: params && typeof params === 'object' && !Array.isArray(params) ? params : {},
+      inputs: inputs && typeof inputs === 'object' && !Array.isArray(inputs) ? inputs : {},
+    };
+  }
+
+  const contextFile = process.env.CONTEXT_FILE;
+  if (contextFile) {
+    return parseRuntimeJson(readFileSync(contextFile, 'utf8'));
+  }
+
+  const envJson = process.env.CONTEXT_JSON || process.env.CONTEXT;
+  if (envJson) {
+    return parseRuntimeJson(envJson);
+  }
+
+  throw new Error('No stage runtime context available (PARAMS_FILE/INPUTS_FILE, CONTEXT_FILE, or CONTEXT_JSON env)');
+}
+
 (async () => {
   try {
-    const context = JSON.parse(contextJson);
-    context.logger = createStageLogger();
+    const runtime = loadRuntime();
+    const context = {
+      ...runtime,
+      params: runtime.params ?? {},
+      inputs: runtime.inputs ?? {},
+      logger: createStageLogger(),
+    };
 
     const stageRequire = createRequire(join(workDir, 'package.json'));
     const stageRunner = stageRequire(join(workDir, 'stage.js')).default;
