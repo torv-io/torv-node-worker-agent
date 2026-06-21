@@ -1,8 +1,6 @@
 #!/bin/sh
-# Bootstrap: either fetch code/config from S3 via presigned URLs (env) or read JSON from stdin.
-# Presigned URL mode (spawned by torv-worker-agent):
-#   CODE_PRESIGNED_URL, CONFIG_PRESIGNED_URL, CONTEXT_JSON
-# Stdin mode (legacy): {"code":"...","context":{...},"stageConfig":{...}}
+# Bootstrap: fetch stage code/config from presigned URLs, then run via index.js.
+# Worker agent bind-mounts PARAMS_FILE and INPUTS_FILE (written on host disk from gRPC params + S3 inputs).
 set -e
 
 if [ -n "$CODE_PRESIGNED_URL" ]; then

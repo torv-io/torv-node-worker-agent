@@ -49,21 +49,11 @@ function createStageLogger() {
   };
 }
 
-function isValidRuntime(value) {
-  return (
-    value &&
-    typeof value === 'object' &&
-    !Array.isArray(value) &&
-    typeof value.params === 'object' &&
-    value.params !== null &&
-    !Array.isArray(value.params)
-  );
-}
-
-function parseRuntimeJson(raw) {
+function readJsonObjectFile(path, label) {
+  const raw = readFileSync(path, 'utf8');
   const parsed = JSON.parse(raw);
-  if (!isValidRuntime(parsed)) {
-    throw new Error('Stage context is missing a params object');
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`${label} must be a JSON object`);
   }
   return parsed;
 }
@@ -71,26 +61,13 @@ function parseRuntimeJson(raw) {
 function loadRuntime() {
   const paramsFile = process.env.PARAMS_FILE;
   const inputsFile = process.env.INPUTS_FILE;
-  if (paramsFile && inputsFile) {
-    const params = JSON.parse(readFileSync(paramsFile, 'utf8'));
-    const inputs = JSON.parse(readFileSync(inputsFile, 'utf8'));
-    return {
-      params: params && typeof params === 'object' && !Array.isArray(params) ? params : {},
-      inputs: inputs && typeof inputs === 'object' && !Array.isArray(inputs) ? inputs : {},
-    };
+  if (!paramsFile || !inputsFile) {
+    throw new Error('PARAMS_FILE and INPUTS_FILE must be set');
   }
-
-  const contextFile = process.env.CONTEXT_FILE;
-  if (contextFile) {
-    return parseRuntimeJson(readFileSync(contextFile, 'utf8'));
-  }
-
-  const envJson = process.env.CONTEXT_JSON || process.env.CONTEXT;
-  if (envJson) {
-    return parseRuntimeJson(envJson);
-  }
-
-  throw new Error('No stage runtime context available (PARAMS_FILE/INPUTS_FILE, CONTEXT_FILE, or CONTEXT_JSON env)');
+  return {
+    params: readJsonObjectFile(paramsFile, 'PARAMS_FILE'),
+    inputs: readJsonObjectFile(inputsFile, 'INPUTS_FILE'),
+  };
 }
 
 (async () => {
