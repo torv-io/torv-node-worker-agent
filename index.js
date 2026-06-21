@@ -1,5 +1,4 @@
 import { createRequire } from 'module';
-import { readFileSync } from 'fs';
 import { join } from 'path';
 
 const workDir = process.env.WORK_DIR;
@@ -49,16 +48,22 @@ function createStageLogger() {
   };
 }
 
-function readJsonObjectFile(path, label) {
-  const raw = readFileSync(path, 'utf8');
-  const parsed = JSON.parse(raw);
+async function loadInputs() {
+  const url = process.env.INPUTS_PRESIGNED_URL?.trim();
+  if (!url) return {};
+
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to download inputs: HTTP ${res.status}`);
+  }
+  const parsed = await res.json();
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-    throw new Error(`${label} must be a JSON object`);
+    throw new Error('Inputs must be a JSON object');
   }
   return parsed;
 }
 
-function loadRuntime() {
+function loadParams() {
   const paramsRaw = process.env.TORV_PARAMS_JSON;
   if (!paramsRaw) {
     throw new Error('TORV_PARAMS_JSON must be set (params are delivered via gRPC on the run command)');
@@ -67,25 +72,15 @@ function loadRuntime() {
   if (typeof params !== 'object' || params === null || Array.isArray(params)) {
     throw new Error('TORV_PARAMS_JSON must be a JSON object');
   }
-
-  const inputsFile = process.env.INPUTS_FILE;
-  if (!inputsFile) {
-    throw new Error('INPUTS_FILE must be set');
-  }
-
-  return {
-    params,
-    inputs: readJsonObjectFile(inputsFile, 'INPUTS_FILE'),
-  };
+  return params;
 }
 
 (async () => {
   try {
-    const runtime = loadRuntime();
+    const [params, inputs] = await Promise.all([Promise.resolve(loadParams()), loadInputs()]);
     const context = {
-      ...runtime,
-      params: runtime.params ?? {},
-      inputs: runtime.inputs ?? {},
+      params,
+      inputs,
       logger: createStageLogger(),
     };
 

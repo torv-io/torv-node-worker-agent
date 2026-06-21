@@ -1,6 +1,6 @@
 #!/bin/sh
 # Bootstrap: fetch stage code/config from presigned URLs, then run index.js.
-# Params arrive via TORV_PARAMS_JSON (from gRPC). Inputs via bind-mounted INPUTS_FILE.
+# Params via TORV_PARAMS_JSON (gRPC). Inputs via INPUTS_PRESIGNED_URL (downloaded in index.js).
 set -e
 
 if [ -n "$CODE_PRESIGNED_URL" ]; then
