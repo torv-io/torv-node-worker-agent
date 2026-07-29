@@ -1,7 +1,7 @@
 {
-  "name": "@pipe/node-worker-agent",
+  "name": "@torv-io/node-worker-agent",
   "version": "1.0.0",
-  "description": "Node.js worker agent for executing bundled stage code",
+  "description": "In-container Node runtime for Torv stage execution",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -9,7 +9,6 @@
   },
   "dependencies": {
     "@torv-io/node-sdk": "^1.0.0",
-    "@torv-io/shared": "^1.0.0",
-    "node-fetch": "^2.7.0"
+    "@torv-io/shared": "^1.0.0"
   }
 }
