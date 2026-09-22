@@ -1,4 +1,5 @@
 import { createRequire } from 'module';
+import { readFile, readdir } from 'fs/promises';
 import { join } from 'path';
 
 const workDir = process.env.WORK_DIR;
@@ -21,7 +22,28 @@ function createStageLogger() {
   };
 }
 
+function aliasInputKeys(inputs) {
+  const out = { ...inputs };
+  for (const [key, value] of Object.entries(inputs)) {
+    const camel = key.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+    const snake = key.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`).replace(/^_/, '');
+    if (!(camel in out)) out[camel] = value;
+    if (!(snake in out)) out[snake] = value;
+  }
+  return out;
+}
+
 async function loadInputs() {
+  const dir = process.env.INPUTS_DIR?.trim();
+  if (dir) {
+    const inputs = {};
+    for (const file of await readdir(dir)) {
+      if (!file.endsWith('.json')) continue;
+      inputs[file.slice(0, -'.json'.length)] = JSON.parse(await readFile(join(dir, file), 'utf8'));
+    }
+    return aliasInputKeys(inputs);
+  }
+
   const url = process.env.INPUTS_URL?.trim();
   if (!url) return {};
 
@@ -33,7 +55,7 @@ async function loadInputs() {
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     throw new Error('Inputs must be a JSON object');
   }
-  return parsed;
+  return aliasInputKeys(parsed);
 }
 
 function loadParams() {

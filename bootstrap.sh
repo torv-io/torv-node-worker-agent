@@ -15,24 +15,13 @@ echo '{"name":"stage-run","version":"1.0.0"}' > "$WORK_DIR/package.json"
 CODE=$(wget -q -O- "$CODE_URL") || { echo "Failed to download stage code" >&2; exit 1; }
 CONFIG_RAW=$(wget -q -O- "$CONFIG_URL") || { echo "Failed to download stage config" >&2; exit 1; }
 
-if [ -z "$CONFIG_RAW" ]; then
-  echo "Stage config is empty" >&2
-  exit 1
-fi
-
-if ! echo "$CONFIG_RAW" | jq -e . >/dev/null 2>&1; then
-  echo "Stage config is not valid JSON" >&2
-  exit 1
-fi
-
-PKG=$(echo "$CONFIG_RAW" | jq -c '
-  (.dependencies // {} | if type == "object" then . else {} end)
-  | with_entries(select(.key | (. == "@torv-io/node-sdk" or . == "@torv-io/shared") | not))
-  | if length > 0 then {name: "stage-dependencies", version: "1.0.0", dependencies: .} else empty end
-')
-if [ -n "$PKG" ]; then
-  echo "$PKG" > "$WORK_DIR/package.json"
-  NODE_ENV=development npm install --omit=dev --no-audit --no-fund --prefix "$WORK_DIR"
+DEPENDENCIES=$(echo "$CONFIG_RAW" | jq -r '.dependencies // {}')
+if [ "$DEPENDENCIES" != "{}" ] && [ "$DEPENDENCIES" != "null" ]; then
+  RUNTIME_DEPS=$(echo "$DEPENDENCIES" | jq 'with_entries(select(.key | (. == "@torv-io/node-sdk" or . == "@torv-io/shared") | not))')
+  if [ "$RUNTIME_DEPS" != "{}" ] && [ "$RUNTIME_DEPS" != "null" ]; then
+    echo "$RUNTIME_DEPS" | jq '{name: "stage-dependencies", version: "1.0.0", dependencies: .}' > "$WORK_DIR/package.json"
+    NODE_ENV=development npm install --omit=dev --no-audit --no-fund --prefix "$WORK_DIR"
+  fi
 fi
 
 mkdir -p "$WORK_DIR/node_modules/@torv-io"
